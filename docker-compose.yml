@@ -23,6 +23,8 @@ services:
       dockerfile: Dockerfile.backend
     volumes:
       - ./:/app
+    expose:
+      - "7777"
     environment:
       - SEARXNG_BASE_URL=http://searxng:8080
       - REDIS_URL=redis://redis:6379/0
@@ -41,6 +43,8 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile.frontend
+    expose:
+      - "3000"
     environment:
       - NODE_ENV=production
       - REACT_APP_BACKEND_URL=${SERVICE_URL_BACKEND}
