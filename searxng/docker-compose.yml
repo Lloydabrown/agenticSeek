@@ -1,60 +1,109 @@
-# Create the final docker-compose.yml
-docker_compose_content = """services:
+version: '3.8'
+
+services:
+  redis:
+    container_name: redis
+    image: docker.io/valkey/valkey:8-alpine
+    command: valkey-server --save 30 1 --loglevel warning
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETGID
+      - SETUID
+      - DAC_OVERRIDE
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1m"
+        max-file: "1"
+    networks:
+      - agentic-seek-net
+
+  searxng:
+    container_name: searxng
+    image: docker.io/searxng/searxng:latest
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./searxng:/etc/searxng:rw,z
+    environment:
+      - SEARXNG_BASE_URL=${SEARXNG_BASE_URL:-http://localhost:8081/}
+      - SEARXNG_SECRET_KEY=${SEARXNG_SECRET_KEY}
+      - UWSGI_WORKERS=4
+      - UWSGI_THREADS=4
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1m"
+        max-file: "1"
+    depends_on:
+      - redis
+    networks:
+      - agentic-seek-net
+
   frontend:
+    container_name: frontend
     build:
       context: ./frontend
       dockerfile: Dockerfile.frontend
     ports:
       - "3001:3000"
+    volumes:
+      - ./frontend/agentic-seek-front/src:/app/src:rw,z
+      - ./screenshots:/app/screenshots
     environment:
-      - REACT_APP_BACKEND_URL=http://backend:8000
+      - NODE_ENV=production
+      - CHOKIDAR_USEPOLLING=true
+      - REACT_APP_BACKEND_URL=${SERVICE_URL_BACKEND:-http://localhost:7777}
+    networks:
+      - agentic-seek-net
     depends_on:
       - backend
-    networks:
-      - agenticseek-network
 
   backend:
+    container_name: backend
     build:
       context: .
       dockerfile: Dockerfile.backend
     ports:
-      - "8000:8000"
+      - "7777:7777"
+    volumes:
+      - ./:/app
+      - ${WORK_DIR:-.}:/opt/workspace
+    command: python3 api.py
     environment:
+      - SEARXNG_BASE_URL=${SEARXNG_BASE_URL:-http://searxng:8080}
+      - REDIS_URL=${REDIS_BASE_URL:-redis://redis:6379/0}
+      - WORK_DIR=/opt/workspace
+      - BACKEND_PORT=7777
+      - DOCKER_INTERNAL_URL=http://host.docker.internal
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
       - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
-      - SEARXNG_BASE_URL=http://searxng:8081
-      - REDIS_URL=redis://redis:6379
-      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - TOGETHER_API_KEY=${TOGETHER_API_KEY}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - HUGGINGFACE_API_KEY=${HUGGINGFACE_API_KEY}
+    networks:
+      - agentic-seek-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       - redis
       - searxng
-    networks:
-      - agenticseek-network
 
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    networks:
-      - agenticseek-network
-
-  searxng:
-    image: searxng/searxng:latest
-    ports:
-      - "8081:8080"
-    environment:
-      - SEARXNG_SECRET=${SEARXNG_SECRET:-mysecretkey}
-    networks:
-      - agenticseek-network
+volumes:
+  redis-data:
+  chrome_profiles:
 
 networks:
-  agenticseek-network:
+  agentic-seek-net:
     driver: bridge
-"""
-
-# Write to file
-with open('docker-compose.yml', 'w') as f:
-    f.write(docker_compose_content)
-
-print("✅ Created docker-compose.yml")
-print("\nContent:")
-print(docker_compose_content)
