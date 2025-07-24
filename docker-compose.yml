@@ -1,61 +1,73 @@
 version: '3.8'
+
 services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    networks:
+      - agenticseek-network
+
+  searxng:
+    image: searxng/searxng:latest
+    restart: unless-stopped
+    ports:
+      - "8081:8080"  # Changed from 8080 to 8081 to avoid conflict
+    volumes:
+      - ./searxng/settings.yml:/etc/searxng/settings.yml:ro
+      - ./searxng/limiter.toml:/etc/searxng/limiter.toml:ro
+    environment:
+      - SEARXNG_BASE_URL=https://${SEARXNG_HOSTNAME:-localhost:8081}/
+    networks:
+      - agenticseek-network
+    depends_on:
+      - redis
+
   backend:
     build:
       context: .
       dockerfile: Dockerfile.backend
+    restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "8000:8000"  # Backend runs on port 8000
     environment:
-      - HOST=0.0.0.0
-      - PORT=8000
-      - WORK_DIR=/app
+      - SEARXNG_BASE_URL=http://searxng:8080
       - REDIS_URL=redis://redis:6379
-      - SEARXNG_BASE_URL=http://searxng:8080/
-    env_file:
-      - .env
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+      - TOGETHER_API_KEY=${TOGETHER_API_KEY:-}
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-}
+    volumes:
+      - models:/app/models
+      - hf-cache:/root/.cache/huggingface
+    networks:
+      - agenticseek-network
     depends_on:
       - redis
       - searxng
-    volumes:
-      - hf_cache:/root/.cache/huggingface
-      - models:/app/models
-    restart: unless-stopped
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile.frontend
+    restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
-      - HOST=0.0.0.0
-      - PORT=3000
-      - REACT_APP_BACKEND_URL=${SERVICE_URL_BACKEND:-http://localhost:8000}
+      - REACT_APP_BACKEND_URL=${SERVICE_URL_BACKEND}
+    networks:
+      - agenticseek-network
     depends_on:
       - backend
-    restart: unless-stopped
-
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    restart: unless-stopped
-
-  searxng:
-    image: searxng/searxng:latest
-    ports:
-      - "8080:8080"
-    environment:
-      - SEARXNG_SECRET=${SEARXNG_SECRET:-6baef84cc83608c854f78dfd35a58b90d1c63e95c9a38a09969c113f56445c0d}
-    volumes:
-      - ./searxng/settings.yml:/etc/searxng/settings.yml:ro
-      - ./searxng/limiter.toml:/etc/searxng/limiter.toml:ro
-    restart: unless-stopped
 
 volumes:
   redis_data:
-  hf_cache:
   models:
+  hf-cache:
+
+networks:
+  agenticseek-network:
+    driver: bridge
