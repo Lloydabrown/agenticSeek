@@ -16,6 +16,7 @@ services:
       context: .
       dockerfile: Dockerfile.backend
     environment:
+      - SERVICE_FQDN_BACKEND=8000
       - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
       - SEARXNG_BASE_URL=http://searxng:8080
       - REDIS_URL=redis://redis:6379
