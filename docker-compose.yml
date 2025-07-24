@@ -1,51 +1,37 @@
 version: '3.8'
 
 services:
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile.frontend
-    ports:
-      - "3001:3000"  # Changed from 3000 to avoid conflicts
-    environment:
-      - REACT_APP_BACKEND_URL=${SERVICE_URL_BACKEND:-http://localhost:8001}
-    depends_on:
-      - backend
-    restart: unless-stopped
-
   backend:
     build:
       context: .
       dockerfile: Dockerfile.backend
     ports:
-      - "8001:8000"  # Changed from 8000 to avoid conflicts
+      - "8000:8000"
     environment:
       - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
-      - SEARXNG_BASE_URL=http://searxng:8080
-      - HF_HOME=/.cache/huggingface
-    volumes:
-      # Mount pre-downloaded models to avoid Docker build issues
-      - ./bart_large_mnli:/app/bart_large_mnli
-      - ./led-base-book-summary:/app/led-base-book-summary
-      - ./llm_router:/app/llm_router
-      - ./models:/app/models
-      - ./hf_cache:/.cache/huggingface
-    depends_on:
-      - redis
-      - searxng
     restart: unless-stopped
-    command: ["python3", "api.py"]  # Manual start as you discovered
+    command: ["python3", "api.py"]
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_BACKEND_URL=http://backend:8000
+    depends_on:
+      - backend
+    restart: unless-stopped
 
   redis:
     image: redis:7-alpine
     ports:
-      - "6380:6379"  # Changed from 6379 to avoid conflicts
+      - "6379:6379"
     restart: unless-stopped
 
   searxng:
     image: searxng/searxng:latest
     ports:
-      - "8081:8080"  # Changed from 8080 to avoid conflicts
-    environment:
-      - SEARXNG_BASE_URL=http://searxng:8080
+      - "8080:8080"
     restart: unless-stopped
