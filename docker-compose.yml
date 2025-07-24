@@ -1,55 +1,49 @@
 services:
-  redis:
-    image: docker.io/valkey/valkey:8-alpine
-    command: valkey-server --save 30 1 --loglevel warning
-    volumes:
-      - redis-data:/data
-
-  searxng:
-    image: docker.io/searxng/searxng:latest
-    volumes:
-      - ./searxng:/etc/searxng:rw
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "3000:3000"
     environment:
-      - SEARXNG_BASE_URL=https://agenticseek.aiagentmachines.com
-      - SEARXNG_SECRET_KEY=${SEARXNG_SECRET_KEY}
-      - UWSGI_WORKERS=4
-      - UWSGI_THREADS=4
+      - VITE_API_BASE_URL=${BACKEND_URL:-http://backend:8000}
     depends_on:
-      - redis
+      - backend
+    networks:
+      - agenticseek-network
 
   backend:
     build:
       context: .
       dockerfile: Dockerfile.backend
-    volumes:
-      - ./:/app
-    expose:
-      - "7777"
+    ports:
+      - "8000:8000"
     environment:
-      - SEARXNG_BASE_URL=http://searxng:8080
-      - REDIS_URL=redis://redis:6379/0
-      - WORK_DIR=/opt/workspace
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
       - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
-      - TOGETHER_API_KEY=${TOGETHER_API_KEY}
-      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-      - HUGGINGFACE_API_KEY=${HUGGINGFACE_API_KEY}
+      - SEARXNG_BASE_URL=http://searxng:8080
+      - REDIS_URL=redis://redis:6379
     depends_on:
       - redis
       - searxng
+    networks:
+      - agenticseek-network
 
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile.frontend
-    expose:
-      - "3000"
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - agenticseek-network
+
+  searxng:
+    image: searxng/searxng:latest
+    ports:
+      - "8080:8080"
     environment:
-      - NODE_ENV=production
-      - REACT_APP_BACKEND_URL=${SERVICE_URL_BACKEND}
-    depends_on:
-      - backend
+      - SEARXNG_SECRET_KEY=${SEARXNG_SECRET_KEY:-your-secret-key-here}
+    networks:
+      - agenticseek-network
 
-volumes:
-  redis-data:
+networks:
+  agenticseek-network:
+    driver: bridge
