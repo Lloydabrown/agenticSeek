@@ -17,6 +17,9 @@ services:
       - SEARXNG_BASE_URL=http://searxng:8080
       - REDIS_URL=redis://redis:6379
       - PORT=8000
+      - WORK_DIR=/app/work
+    volumes:
+      - backend_work:/app/work
     depends_on:
       - redis
       - searxng
@@ -24,8 +27,17 @@ services:
   redis:
     image: redis:7-alpine
     command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
 
   searxng:
     image: searxng/searxng:latest
     environment:
       - SEARXNG_SECRET=${SEARXNG_SECRET:-mysecretkey}
+    volumes:
+      - searxng_config:/etc/searxng
+
+volumes:
+  backend_work:
+  redis_data:
+  searxng_config:
