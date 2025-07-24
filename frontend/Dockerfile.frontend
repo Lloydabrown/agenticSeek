@@ -2,15 +2,22 @@ FROM node:18
 
 WORKDIR /app
 
+# Copy package files
+COPY agentic-seek-front/package*.json ./
+
 # Install dependencies
-COPY agentic-seek-front/package.json agentic-seek-front/package-lock.json ./
 RUN npm install
 
-# Copy application code
+# Copy source code
 COPY agentic-seek-front/ .
 
-# Expose port
+# Build the application
+RUN npm run build
+
+# Install serve to serve the built app
+RUN npm install -g serve
+
 EXPOSE 3000
 
-# Run the application
-CMD ["npm", "start"]
+# Serve the built application
+CMD ["serve", "-s", "build", "-l", "3000", "-n"]
