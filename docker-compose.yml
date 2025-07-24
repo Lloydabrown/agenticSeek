@@ -1,82 +1,60 @@
 version: '3.8'
 
 services:
-  redis:
-    image: redis:7-alpine
-    container_name: redis-${COMPOSE_PROJECT_NAME:-agenticseek}
-    restart: unless-stopped
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    networks:
-      - agenticseek-network
-
-  searxng:
-    image: searxng/searxng:latest
-    container_name: searxng-${COMPOSE_PROJECT_NAME:-agenticseek}
-    restart: unless-stopped
-    ports:
-      - "8081:8080"  # Changed from 8080 to 8081 to avoid conflicts
-    volumes:
-      - ./searxng:/etc/searxng:rw
-    environment:
-      - SEARXNG_BASE_URL=${SEARXNG_BASE_URL:-http://localhost:8081/}
-    networks:
-      - agenticseek-network
-    depends_on:
-      - redis
-
   backend:
     build:
       context: .
       dockerfile: Dockerfile.backend
-    container_name: backend-${COMPOSE_PROJECT_NAME:-agenticseek}
-    restart: unless-stopped
     ports:
-      - "8000:8000"  # Backend runs on port 8000
+      - "8000:8000"
     environment:
-      - SEARXNG_BASE_URL=http://searxng:8080
+      - HOST=0.0.0.0
+      - PORT=8000
+      - WORK_DIR=/opt/workspace
       - REDIS_URL=redis://redis:6379
-      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
-      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
-      - TOGETHER_API_KEY=${TOGETHER_API_KEY:-}
-      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-}
-      - WORK_DIR=${WORK_DIR:-/opt/workspace}
-    volumes:
-      - ./models:/app/models
-      - ./hf_cache:/app/hf_cache
-      - workspace_data:/opt/workspace
-    networks:
-      - agenticseek-network
+      - SEARXNG_BASE_URL=http://searxng:8080/
+    env_file:
+      - .env
     depends_on:
       - redis
       - searxng
-    command: ["python", "api.py"]
+    volumes:
+      - ./hf_cache:/root/.cache/huggingface
+      - ./models:/opt/workspace/models
+    restart: unless-stopped
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile.frontend
-    container_name: frontend-${COMPOSE_PROJECT_NAME:-agenticseek}
-    restart: unless-stopped
     ports:
-      - "3001:3000"  # Changed from 3000 to 3001 to avoid conflicts
+      - "3000:3000"
     environment:
+      - HOST=0.0.0.0
+      - PORT=3000
       - REACT_APP_BACKEND_URL=${SERVICE_URL_BACKEND:-http://localhost:8000}
-      - NODE_ENV=production
-    networks:
-      - agenticseek-network
     depends_on:
       - backend
-    command: ["npm", "start"]
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  searxng:
+    image: searxng/searxng:latest
+    ports:
+      - "8080:8080"
+    environment:
+      - SEARXNG_SECRET=${SEARXNG_SECRET:-6baef84cc83608c854f78dfd35a58b90d1c63e95c9a38a09969c113f56445c0d}
+    volumes:
+      - ./searxng/settings.yml:/etc/searxng/settings.yml:ro
+      - ./searxng/limiter.toml:/etc/searxng/limiter.toml:ro
+    restart: unless-stopped
 
 volumes:
   redis_data:
-  workspace_data:
-
-networks:
-  agenticseek-network:
-    driver: bridge
