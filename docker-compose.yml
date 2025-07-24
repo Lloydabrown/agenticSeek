@@ -6,7 +6,9 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.frontend
     environment:
-      - REACT_APP_BACKEND_URL=${SERVICE_URL_BACKEND:-http://localhost:8000}
+      - SERVICE_FQDN_FRONTEND_3000
+      - REACT_APP_BACKEND_URL=${SERVICE_URL_BACKEND}
+      - VITE_API_BASE_URL=${SERVICE_URL_BACKEND}
     depends_on:
       - backend
     restart: unless-stopped
@@ -16,7 +18,7 @@ services:
       context: .
       dockerfile: Dockerfile.backend
     environment:
-      - SERVICE_FQDN_BACKEND=8000
+      - SERVICE_FQDN_BACKEND_8000
       - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
       - SEARXNG_BASE_URL=http://searxng:8080
       - REDIS_URL=redis://redis:6379
