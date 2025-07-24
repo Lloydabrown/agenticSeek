@@ -4,7 +4,9 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.frontend
     environment:
-      - REACT_APP_BACKEND_URL=${SERVICE_URL_BACKEND}
+      - REACT_APP_API_URL=http://backend:8000
+      - REACT_APP_BACKEND_URL=http://backend:8000
+      - PORT=3000
     depends_on:
       - backend
 
@@ -17,12 +19,19 @@ services:
       - SEARXNG_BASE_URL=http://searxng:8080
       - REDIS_URL=redis://redis:6379
       - PORT=8000
-      - WORK_DIR=/app/work
+      - PYTHONPATH=/app
+      - WORKSPACE_DIR=/opt/workspace
     volumes:
-      - backend_work:/app/work
+      - workspace_data:/opt/workspace
+      - tmp_data:/tmp
     depends_on:
       - redis
       - searxng
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   redis:
     image: redis:7-alpine
@@ -34,10 +43,12 @@ services:
     image: searxng/searxng:latest
     environment:
       - SEARXNG_SECRET=${SEARXNG_SECRET:-mysecretkey}
+      - SEARXNG_BASE_URL=http://searxng:8080
     volumes:
       - searxng_config:/etc/searxng
 
 volumes:
-  backend_work:
+  workspace_data:
+  tmp_data:
   redis_data:
   searxng_config:
