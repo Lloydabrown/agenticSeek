@@ -5,10 +5,8 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile.frontend
-    ports:
-      - "3001:3000"
     environment:
-      - REACT_APP_BACKEND_URL=${SERVICE_URL_BACKEND:-http://localhost:8001}
+      - REACT_APP_BACKEND_URL=${SERVICE_URL_BACKEND:-http://localhost:8000}
     depends_on:
       - backend
     restart: unless-stopped
@@ -17,8 +15,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.backend
-    ports:
-      - "8001:8000"
     environment:
       - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
       - SEARXNG_BASE_URL=http://searxng:8080
@@ -30,14 +26,10 @@ services:
 
   redis:
     image: redis:7-alpine
-    ports:
-      - "6380:6379"
     restart: unless-stopped
 
   searxng:
     image: searxng/searxng:latest
-    ports:
-      - "8081:8080"
     environment:
       - SEARXNG_SECRET=${SEARXNG_SECRET:-mysecretkey}
     restart: unless-stopped
