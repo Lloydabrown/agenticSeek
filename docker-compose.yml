@@ -1,19 +1,45 @@
 services:
-  n8n:
-    image: docker.n8n.io/n8nio/n8n
-    environment:
-      - SERVICE_FQDN_N8N_5678
-      - 'N8N_EDITOR_BASE_URL=${SERVICE_FQDN_N8N}'
-      - 'WEBHOOK_URL=${SERVICE_FQDN_N8N}'
-      - 'N8N_HOST=${SERVICE_URL_N8N}'
-      - 'GENERIC_TIMEZONE=${GENERIC_TIMEZONE:-Europe/Berlin}'
-      - 'TZ=${TZ:-Europe/Berlin}'
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
     volumes:
-      - 'n8n-data:/home/node/.n8n'
-    healthcheck:
-      test:
-        - CMD-SHELL
-        - 'wget -qO- http://127.0.0.1:5678/'
-      interval: 5s
-      timeout: 20s
-      retries: 10
+      - redis_data:/data
+    restart: unless-stopped
+
+  searxng:
+    image: searxng/searxng:latest
+    environment:
+      - SEARXNG_BASE_URL=${SEARXNG_BASE_URL:-http://localhost:8080}
+      - SEARXNG_SECRET_KEY=${SEARXNG_SECRET_KEY}
+    volumes:
+      - searxng_config:/etc/searxng
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    environment:
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+      - HUGGINGFACE_API_KEY=${HUGGINGFACE_API_KEY}
+      - SEARXNG_BASE_URL=http://searxng:8080
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - redis
+      - searxng
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.frontend
+    environment:
+      - REACT_APP_API_URL=${SERVICE_URL_BACKEND}
+      - NODE_ENV=production
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  redis_data:
+  searxng_config:
