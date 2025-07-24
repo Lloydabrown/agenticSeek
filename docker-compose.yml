@@ -4,23 +4,23 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
+    command: redis-server --appendonly yes
     volumes:
       - redis_data:/data
     networks:
-      - agenticseek-network
+      - agenticseek_network
 
   searxng:
     image: searxng/searxng:latest
     restart: unless-stopped
     ports:
-      - "8081:8080"  # Changed from 8080 to 8081 to avoid conflict
+      - "8081:8080"  # Changed from 8080 to 8081
     volumes:
-      - ./searxng/settings.yml:/etc/searxng/settings.yml:ro
-      - ./searxng/limiter.toml:/etc/searxng/limiter.toml:ro
+      - ./searxng:/etc/searxng:rw
     environment:
       - SEARXNG_BASE_URL=https://${SEARXNG_HOSTNAME:-localhost:8081}/
     networks:
-      - agenticseek-network
+      - agenticseek_network
     depends_on:
       - redis
 
@@ -30,7 +30,7 @@ services:
       dockerfile: Dockerfile.backend
     restart: unless-stopped
     ports:
-      - "8000:8000"  # Backend runs on port 8000
+      - "8000:8000"  # Backend runs on 8000
     environment:
       - SEARXNG_BASE_URL=http://searxng:8080
       - REDIS_URL=redis://redis:6379
@@ -38,13 +38,22 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
       - TOGETHER_API_KEY=${TOGETHER_API_KEY:-}
+      - XAI_API_KEY=${XAI_API_KEY:-}
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-}
+      - SERPAPI_API_KEY=${SERPAPI_API_KEY:-}
+      - BRAVE_SEARCH_API_KEY=${BRAVE_SEARCH_API_KEY:-}
+      - FLIGHT_API_KEY=${FLIGHT_API_KEY:-}
+      - SPEECH_MODEL=${SPEECH_MODEL:-kokoro}
+      - SPEECH_ENABLED=${SPEECH_ENABLED:-false}
+      - HEADLESS=${HEADLESS:-true}
     volumes:
-      - models:/app/models
-      - hf-cache:/root/.cache/huggingface
+      - ./sources:/app/sources
+      - ./prompts:/app/prompts
+      - ./llm_router:/app/llm_router
     networks:
-      - agenticseek-network
+      - agenticseek_network
     depends_on:
       - redis
       - searxng
@@ -55,19 +64,18 @@ services:
       dockerfile: Dockerfile.frontend
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "3001:3000"  # Changed from 3000 to 3001
     environment:
       - REACT_APP_BACKEND_URL=${SERVICE_URL_BACKEND}
+      - NODE_ENV=production
     networks:
-      - agenticseek-network
+      - agenticseek_network
     depends_on:
       - backend
 
 volumes:
   redis_data:
-  models:
-  hf-cache:
 
 networks:
-  agenticseek-network:
+  agenticseek_network:
     driver: bridge
