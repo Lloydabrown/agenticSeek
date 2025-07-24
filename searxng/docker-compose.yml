@@ -6,9 +6,9 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.frontend
     ports:
-      - "3000:3000"
+      - "3001:3000"
     environment:
-      - REACT_APP_BACKEND_URL=${SERVICE_URL_BACKEND:-http://backend:8000}
+      - REACT_APP_BACKEND_URL=${SERVICE_URL_BACKEND:-http://localhost:8000}
     depends_on:
       - backend
     restart: unless-stopped
@@ -27,9 +27,6 @@ services:
       - redis
       - searxng
     restart: unless-stopped
-    volumes:
-      - ./hf_cache:/app/hf_cache
-      - ./models:/app/models
 
   redis:
     image: redis:7-alpine
@@ -40,10 +37,7 @@ services:
   searxng:
     image: searxng/searxng:latest
     ports:
-      - "8080:8080"
-    volumes:
-      - ./searxng/settings.yml:/etc/searxng/settings.yml:ro
-      - ./searxng/limiter.toml:/etc/searxng/limiter.toml:ro
+      - "8081:8080"
     environment:
-      - SEARXNG_BASE_URL=http://searxng:8080
+      - SEARXNG_SECRET=${SEARXNG_SECRET:-mysecretkey}
     restart: unless-stopped
