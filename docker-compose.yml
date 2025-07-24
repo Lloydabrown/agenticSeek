@@ -20,19 +20,18 @@ services:
         max-size: "1m"
         max-file: "1"
     networks:
-      - agenticseek-network
+      - agentic-seek-net
 
   searxng:
     container_name: searxng
     image: docker.io/searxng/searxng:latest
     restart: unless-stopped
     ports:
-      - "8081:8080"
+      - "8081:8080"  # Changed from 8080:8080 to avoid conflict
     volumes:
       - ./searxng:/etc/searxng:rw
     environment:
-      - SEARXNG_BASE_URL=${SEARXNG_BASE_URL:-http://localhost:8081/}
-      - SEARXNG_SECRET_KEY=${SEARXNG_SECRET_KEY}
+      - SEARXNG_BASE_URL=http://localhost:8081/
       - UWSGI_WORKERS=4
       - UWSGI_THREADS=4
     cap_add:
@@ -47,7 +46,7 @@ services:
     depends_on:
       - redis
     networks:
-      - agenticseek-network
+      - agentic-seek-net
 
   frontend:
     container_name: frontend
@@ -61,7 +60,7 @@ services:
       - CHOKIDAR_USEPOLLING=true
       - REACT_APP_BACKEND_URL=http://localhost:7777
     networks:
-      - agenticseek-network
+      - agentic-seek-net
 
   backend:
     container_name: backend
@@ -70,8 +69,6 @@ services:
       dockerfile: Dockerfile.backend
     ports:
       - "7777:7777"
-    volumes:
-      - ./:/app
     command: python3 api.py
     environment:
       - SEARXNG_BASE_URL=http://searxng:8080
@@ -83,9 +80,8 @@ services:
       - TOGETHER_API_KEY=${TOGETHER_API_KEY}
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-      - HUGGINGFACE_API_KEY=${HUGGINGFACE_API_KEY}
     networks:
-      - agenticseek-network
+      - agentic-seek-net
     depends_on:
       - redis
       - searxng
@@ -94,5 +90,5 @@ volumes:
   redis-data:
 
 networks:
-  agenticseek-network:
+  agentic-seek-net:
     driver: bridge
