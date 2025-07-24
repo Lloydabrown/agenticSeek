@@ -4,61 +4,44 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-    networks:
-      - agenticseek-network
 
   searxng:
     image: searxng/searxng:latest
     restart: unless-stopped
-    ports:
-      - "8081:8080"  # Changed from 8080 to 8081 to avoid conflict
+    expose:
+      - "8080"
     volumes:
       - ./searxng/settings.yml:/etc/searxng/settings.yml:ro
       - ./searxng/uwsgi.ini:/etc/searxng/uwsgi.ini:ro
       - ./searxng/limiter.toml:/etc/searxng/limiter.toml:ro
     environment:
-      - SEARXNG_BASE_URL=http://localhost:8081/
-    networks:
-      - agenticseek-network
+      - SEARXNG_BASE_URL=${SERVICE_URL_SEARXNG:-http://localhost:8080/}
 
   backend:
     build:
       context: .
       dockerfile: Dockerfile.backend
     restart: unless-stopped
-    ports:
-      - "8000:8000"  # Backend runs on port 8000
+    expose:
+      - "8000"
     environment:
       - SEARXNG_BASE_URL=http://searxng:8080
       - REDIS_URL=redis://redis:6379
       - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
-      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
-      - TOGETHER_API_KEY=${TOGETHER_API_KEY:-}
-      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://localhost:11434}
     depends_on:
       - redis
       - searxng
-    networks:
-      - agenticseek-network
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile.frontend
     restart: unless-stopped
-    ports:
-      - "3000:3000"
+    expose:
+      - "3000"
     environment:
-      - REACT_APP_BACKEND_URL=${SERVICE_URL_BACKEND:-http://localhost:8000}
+      - REACT_APP_BACKEND_URL=${SERVICE_URL_BACKEND}
       - PORT=3000
       - HOST=0.0.0.0
     depends_on:
       - backend
-    networks:
-      - agenticseek-network
-
-networks:
-  agenticseek-network:
-    driver: bridge
