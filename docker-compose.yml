@@ -1,5 +1,4 @@
 version: '3.8'
-
 services:
   backend:
     build:
@@ -10,7 +9,7 @@ services:
     environment:
       - HOST=0.0.0.0
       - PORT=8000
-      - WORK_DIR=/opt/workspace
+      - WORK_DIR=/app
       - REDIS_URL=redis://redis:6379
       - SEARXNG_BASE_URL=http://searxng:8080/
     env_file:
@@ -19,8 +18,8 @@ services:
       - redis
       - searxng
     volumes:
-      - ./hf_cache:/root/.cache/huggingface
-      - ./models:/opt/workspace/models
+      - hf_cache:/root/.cache/huggingface
+      - models:/app/models
     restart: unless-stopped
 
   frontend:
@@ -58,3 +57,5 @@ services:
 
 volumes:
   redis_data:
+  hf_cache:
+  models:
