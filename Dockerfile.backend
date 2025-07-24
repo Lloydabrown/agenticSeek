@@ -49,9 +49,6 @@ COPY crx/ crx/
 COPY llm_router/ llm_router/
 COPY config.ini .
 
-# Health check endpoint
-RUN echo 'from fastapi import FastAPI\nfrom fastapi.responses import JSONResponse\n\napp = FastAPI()\n\n@app.get("/health")\ndef health():\n    return JSONResponse({"status": "healthy"})' > /app/health.py
-
 EXPOSE 8000
 
 CMD ["python", "api.py"]
