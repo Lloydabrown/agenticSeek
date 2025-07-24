@@ -8,11 +8,10 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - REACT_APP_BACKEND_URL=${SERVICE_URL_BACKEND:-http://localhost:8000}
+      - REACT_APP_BACKEND_URL=${SERVICE_URL_BACKEND:-http://backend:8000}
     depends_on:
       - backend
-    networks:
-      - agenticseek-network
+    restart: unless-stopped
 
   backend:
     build:
@@ -27,18 +26,16 @@ services:
     depends_on:
       - redis
       - searxng
+    restart: unless-stopped
     volumes:
       - ./hf_cache:/app/hf_cache
       - ./models:/app/models
-    networks:
-      - agenticseek-network
 
   redis:
     image: redis:7-alpine
     ports:
       - "6379:6379"
-    networks:
-      - agenticseek-network
+    restart: unless-stopped
 
   searxng:
     image: searxng/searxng:latest
@@ -49,13 +46,4 @@ services:
       - ./searxng/limiter.toml:/etc/searxng/limiter.toml:ro
     environment:
       - SEARXNG_BASE_URL=http://searxng:8080
-    networks:
-      - agenticseek-network
-
-networks:
-  agenticseek-network:
-    driver: bridge
-
-volumes:
-  hf_cache:
-  models:
+    restart: unless-stopped
